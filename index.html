@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Convay's Game of Life</title>
+
+  <style media="screen">
+    body {
+      margin: 0px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="">
+  <canvas id="myCanvas" width="800" height="500"></canvas><br>
+  <span>Generation: <span id="generationSpan">0</span></span><br>
+  <input id="stepButton" type="button" onclick="applyRules()" value="Step"/>
+  <input id="automateButton" type="button" onclick="automate()" value="Automate"/>
+
+</div>
+
+
+  <script type="text/javascript">
+    // canvas and context variables
+    var canvas = document.getElementById("myCanvas"); // we get the canvas element
+    var ctx = canvas.getContext("2d"); // we get the canvas context
+    // map variable
+    var map = [];
+    var width = 40; // number of cells on X axis
+    var height = 25; // number of cells on Y axis
+    var cellSize = 20;
+    // t=0 is the first generation
+    var generation = 0;
+    // automatic generation increment
+    var isAutomate = false;
+    // FPS based draw update variables
+    var fps = 5;
+    var now;
+    var then = Date.now();
+    var interval = 1000 / fps;
+    var delta;
+
+    function Cell(x, y) {
+      this.x = x;
+      this.y = y;
+      this.size = cellSize;
+      this.isAlive = false;
+
+      this.draw = function() {
+        ctx.beginPath();
+        ctx.rect(this.x * this.size, this.y * this.size, this.size, this.size);
+        ctx.strokeStyle = "#000";
+        ctx.stroke();
+        ctx.closePath();
+
+        if (this.isAlive) {
+          ctx.fillStyle = "#000";
+        } else {
+          ctx.fillStyle = "#f3f3f3";
+        }
+
+        ctx.fillRect(this.x * this.size, this.y * this.size, this.size, this.size);
+        ctx.stroke();
+      }
+    }
+
+    function initializeMap() {
+      for (var i = 0; i < width; i++) {
+        var temp = []
+        for (var j = 0; j < height; j++) {
+          temp[j] = new Cell(i, j);
+        }
+        map[i] = temp;
+      }
+    }
+
+    canvas.addEventListener('click', on_canvas_click, false);
+
+    function on_canvas_click(ev) {
+      var xPos = ev.clientX - canvas.offsetLeft;
+      var yPos = ev.clientY - canvas.offsetTop;
+      getClickedCell(xPos, yPos);
+    }
+
+    function getClickedCell(xPos, yPos) {
+      for (var i = 0; i < width; i++) {
+        for (var j = 0; j < height; j++) {
+          cell = map[i][j];
+          if ((xPos >= cell.x * cell.size && xPos < cell.x * cell.size + cell.size)
+          && (yPos >= cell.y * cell.size && yPos < cell.y * cell.size + cell.size)) {
+            cell.isAlive = !cell.isAlive;
+          }
+        }
+      }
+    }
+
+    function getNeighbours(cell) {
+      neighboursCount = 0;
+      var x = cell.x;
+      var y = cell.y;
+
+      if (x > 0 && map[x - 1][y].isAlive) {
+        neighboursCount++;
+      }
+      if (x < width - 1 && map[x + 1][y].isAlive) {
+        neighboursCount++;
+      }
+      if (y < height - 1 && map[x][y + 1].isAlive) {
+        neighboursCount++;
+      }
+      if (y > 0 && map[x][y - 1].isAlive) {
+        neighboursCount++;
+      }
+
+      if (x > 0 && y > 0 && map[x - 1][y - 1].isAlive) {
+        neighboursCount++;
+      }
+      if (x < width - 1 && y > 0 && map[x + 1][y - 1].isAlive) {
+        neighboursCount++;
+      }
+      if (y < height - 1 && x > 0 && map[x - 1][y + 1].isAlive) {
+        neighboursCount++;
+      }
+      if (x < width - 1 && y < height - 1 && map[x + 1][y + 1].isAlive) {
+        neighboursCount++;
+      }
+
+      return neighboursCount;
+    }
+
+    function drawCells(){
+      // Draw all cells
+      for (var i = 0; i < width; i++) {
+        for (var j = 0; j < height; j++) {
+          map[i][j].draw();
+        }
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      now = Date.now();
+      delta = now - then;
+      if (delta > interval) {
+        then = now - (delta % interval);
+        if (isAutomate) {
+          applyRules();
+        }
+        // Draw all cells
+        drawCells();
+        document.getElementById("generationSpan").textContent=generation;
+      }
+    }
+
+    function automate() {
+      isAutomate = !isAutomate;
+      if(isAutomate){
+        document.getElementById("automateButton").value="Stop";
+      }
+      else {
+        document.getElementById("automateButton").value="Automate";
+      }
+    }
+
+    function applyRules() {
+      // Create a temporary map
+      var temporaryMap = [];
+
+      // initialize an grid of cells
+      for (var i = 0; i < width; i++) {
+        var temp = [];
+        for (var j = 0; j < height; j++) {
+          temp[j] = new Cell(i, j);
+        }
+        temporaryMap[i] = temp;
+      }
+
+      // loop through every cell and apply the rules
+      for (var i = 0; i < width; i++) {
+        for (var j = 0; j < height; j++) {
+          cell = map[i][j];
+
+          neighbours = getNeighbours(cell);
+          if (neighbours < 2) {
+            temporaryMap[i][j].isAlive = false;
+          }
+          if (cell.isAlive && (neighbours == 3 || neighbours == 2)) {
+            temporaryMap[i][j].isAlive = true;
+          }
+          if (neighbours > 3) {
+            temporaryMap[i][j].isAlive = false;
+          }
+          if (neighbours == 3) {
+            temporaryMap[i][j].isAlive = true;
+          }
+        }
+      }
+      // replace the map with the fresh calculated temporary map
+      map = temporaryMap;
+      generation++; // increase the generation
+    }
+
+
+    initializeMap();
+    animate();
+
+  </script>
+
+</body>
+
+</html>
